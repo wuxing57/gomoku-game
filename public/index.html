@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>五子棋</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Microsoft YaHei', Arial, sans-serif;
+    }
+
+    .gomoku-container {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      padding: 20px;
+    }
+
+    .title {
+      color: white;
+      font-size: 3rem;
+      margin-bottom: 20px;
+      text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+    }
+
+    .game-info {
+      margin-bottom: 20px;
+      text-align: center;
+    }
+
+    .current-player {
+      color: white;
+      font-size: 1.5rem;
+      margin-bottom: 10px;
+    }
+
+    .player-indicator {
+      font-weight: bold;
+    }
+
+    .player-indicator.black {
+      color: #000;
+      text-shadow: 0 0 5px rgba(255, 255, 255, 0.8);
+    }
+
+    .player-indicator.white {
+      color: #fff;
+      text-shadow: 0 0 5px rgba(0, 0, 0, 0.8);
+    }
+
+    .winner {
+      color: #ffd700;
+      font-size: 1.8rem;
+      font-weight: bold;
+      animation: pulse 0.5s ease-in-out infinite alternate;
+    }
+
+    @keyframes pulse {
+      from {
+        transform: scale(1);
+      }
+      to {
+        transform: scale(1.1);
+      }
+    }
+
+    .board-wrapper {
+      background: #dcb35c;
+      padding: 15px;
+      border-radius: 8px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    }
+
+    .board {
+      display: grid;
+      grid-template-columns: repeat(15, 30px);
+      grid-template-rows: repeat(15, 30px);
+      background: #dcb35c;
+      border: 2px solid #8b6f2e;
+    }
+
+    .board-row {
+      display: contents;
+    }
+
+    .cell {
+      width: 30px;
+      height: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      position: relative;
+    }
+
+    .cell::before {
+      content: '';
+      position: absolute;
+      width: 1px;
+      height: 100%;
+      background: #8b6f2e;
+      left: 50%;
+      transform: translateX(-50%);
+    }
+
+    .cell::after {
+      content: '';
+      position: absolute;
+      width: 100%;
+      height: 1px;
+      background: #8b6f2e;
+      top: 50%;
+      transform: translateY(-50%);
+    }
+
+    .board-row:first-child .cell::after,
+    .board-row:last-child .cell::after,
+    .cell:first-child::before,
+    .cell:last-child::before {
+      display: none;
+    }
+
+    .stone {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      z-index: 1;
+      box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+    }
+
+    .stone.black {
+      background: radial-gradient(circle at 30% 30%, #555, #000);
+    }
+
+    .stone.white {
+      background: radial-gradient(circle at 30% 30%, #fff, #ccc);
+    }
+
+    .reset-btn {
+      margin-top: 20px;
+      padding: 12px 30px;
+      font-size: 1.2rem;
+      background: white;
+      color: #667eea;
+      border: none;
+      border-radius: 25px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    }
+
+    .reset-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+    }
+
+    .reset-btn:active {
+      transform: translateY(0);
+    }
+  </style>
+</head>
+<body>
+  <div class="gomoku-container">
+    <h1 class="title">五子棋</h1>
+    
+    <div class="game-info">
+      <div class="current-player">
+        <span>当前玩家：</span>
+        <span id="playerIndicator" class="player-indicator black">
+          ⚫ 黑棋
+        </span>
+      </div>
+      <div id="winnerDisplay" class="winner" style="display: none;"></div>
+    </div>
+
+    <div class="board-wrapper">
+      <div id="board" class="board"></div>
+    </div>
+
+    <button class="reset-btn" onclick="resetGame()">
+      🔄 重新开始
+    </button>
+  </div>
+
+  <script>
+    const BOARD_SIZE = 15;
+    let board = [];
+    let currentPlayer = 'black';
+    let gameOver = false;
+    let winner = null;
+
+    // 初始化棋盘
+    function initBoard() {
+      return Array(BOARD_SIZE).fill(null).map(() => Array(BOARD_SIZE).fill(null));
+    }
+
+    // 渲染棋盘
+    function renderBoard() {
+      const boardEl = document.getElementById('board');
+      boardEl.innerHTML = '';
+
+      for (let row = 0; row < BOARD_SIZE; row++) {
+        for (let col = 0; col < BOARD_SIZE; col++) {
+          const cell = document.createElement('div');
+          cell.className = 'cell';
+          cell.onclick = () => handleClick(row, col);
+
+          if (board[row][col]) {
+            const stone = document.createElement('div');
+            stone.className = `stone ${board[row][col]}`;
+            cell.appendChild(stone);
+          }
+
+          boardEl.appendChild(cell);
+        }
+      }
+    }
+
+    // 更新游戏信息显示
+    function updateGameInfo() {
+      const playerIndicator = document.getElementById('playerIndicator');
+      const winnerDisplay = document.getElementById('winnerDisplay');
+
+      playerIndicator.className = `player-indicator ${currentPlayer}`;
+      playerIndicator.textContent = currentPlayer === 'black' ? '⚫ 黑棋' : '⚪ 白棋';
+
+      if (winner) {
+        winnerDisplay.textContent = `🎉 ${winner === 'black' ? '黑棋' : '白棋'}获胜！`;
+        winnerDisplay.style.display = 'block';
+      } else if (isDraw()) {
+        winnerDisplay.textContent = '🤝 平局！';
+        winnerDisplay.style.display = 'block';
+      } else {
+        winnerDisplay.style.display = 'none';
+      }
+    }
+
+    // 检查是否平局
+    function isDraw() {
+      if (gameOver) return false;
+      return board.every(row => row.every(cell => cell !== null));
+    }
+
+    // 检查是否获胜
+    function checkWin(row, col, player) {
+      const directions = [
+        [0, 1],   // 水平
+        [1, 0],   // 垂直
+        [1, 1],   // 右下斜
+        [1, -1]   // 左下斜
+      ];
+
+      for (const [dx, dy] of directions) {
+        let count = 1;
+
+        // 正方向
+        let r = row + dx;
+        let c = col + dy;
+        while (r >= 0 && r < BOARD_SIZE && c >= 0 && c < BOARD_SIZE && board[r][c] === player) {
+          count++;
+          r += dx;
+          c += dy;
+        }
+
+        // 反方向
+        r = row - dx;
+        c = col - dy;
+        while (r >= 0 && r < BOARD_SIZE && c >= 0 && c < BOARD_SIZE && board[r][c] === player) {
+          count++;
+          r -= dx;
+          c -= dy;
+        }
+
+        if (count >= 5) return true;
+      }
+
+      return false;
+    }
+
+    // 处理点击
+    function handleClick(row, col) {
+      if (gameOver || board[row][col] !== null) return;
+
+      board[row][col] = currentPlayer;
+
+      // 检查是否获胜
+      if (checkWin(row, col, currentPlayer)) {
+        winner = currentPlayer;
+        gameOver = true;
+        updateGameInfo();
+        renderBoard();
+        return;
+      }
+
+      // 切换玩家
+      currentPlayer = currentPlayer === 'black' ? 'white' : 'black';
+      updateGameInfo();
+      renderBoard();
+    }
+
+    // 重置游戏
+    function resetGame() {
+      board = initBoard();
+      currentPlayer = 'black';
+      winner = null;
+      gameOver = false;
+      updateGameInfo();
+      renderBoard();
+    }
+
+    // 初始化游戏
+    resetGame();
+  </script>
+</body>
+</html>
